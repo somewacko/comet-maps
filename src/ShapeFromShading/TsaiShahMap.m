@@ -12,7 +12,7 @@ function [ map ] = TsaiShahMap( image )
 E = mat2gray(image);
 E = double(E);
 % first compute the surface albedo and illumination direction
-[~,~,slant,tilt] = estimate_albedo_illumination (E);
+[slant,tilt] = SlantTiltEstimation(E);
  
 % initializations
 [M,N] = size(E);

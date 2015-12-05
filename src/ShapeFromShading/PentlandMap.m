@@ -15,7 +15,7 @@ E = double(E);
 E = E ./ max(E(:));
 %E = boost_shadow(E); imshow(E);
 % first compute the surface albedo and illumination direction
-[~,~,slant,tilt] = estimate_albedo_illumination (E);
+[slant,tilt] = SlantTiltEstimation (E);
  
 % compute the fourier transform of the image
 Fe = fft2(E);

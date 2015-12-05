@@ -17,21 +17,7 @@ mu = 1;
 albedo = 0.05;
 
 % estimate light direction
-Mu1 = mean(image(:));
-Mu2 = mean(mean(image.^2));
-
-[I_x,I_y] = imgradientxy(image);
-
-I_xy = sqrt(I_x.^2 + I_y.^2);
-I_x = I_x ./ (I_xy + 0.0001);
-I_y = I_y ./ (I_xy + 0.0001);
-
-slant = acos((4*Mu1)/sqrt((6 *(pi^2)* Mu2) - (48 * (Mu1^2))));
-tilt = atan(mean(I_y(:)) / mean(I_x(:)));
-if tilt < 0
-    tilt = tilt + pi;
-end
-
+[slant, tilt] = SlantTiltEstimation(image);
 light_direction = [cos(tilt)*sin(slant) sin(tilt)*sin(slant) cos(slant)];
 
 % determine number of hierarchies
