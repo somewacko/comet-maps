@@ -48,4 +48,4 @@ for iterations = 1:num_iterations
     Z_n_1 = Z_n;
 end
 
-map = medfilt2(abs(Z_n),[21 21]);
+map = Z_n;
