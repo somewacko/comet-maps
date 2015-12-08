@@ -1,6 +1,7 @@
 '''
 download_data.py
-Script to download Rosetta P67 images and .lbl files from ESAC.
+
+Script to download Rosetta P67 images and .lbl files from ESA.
 
 '''
 

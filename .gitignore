@@ -9,3 +9,6 @@ data/*
 # Matlab
 *.m~
 
+# Python
+*.pyc
+
