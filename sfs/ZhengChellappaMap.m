@@ -7,8 +7,13 @@ function [ map ] = ZhengChellappaMap( image )
 % Output
 %   map    : The DEM from given image
 
-% convert to gray image
-image = double(mat2gray(image));
+if size(image, 3) == 3
+    image = double(rgb2gray(image));
+else
+    image = double(mat2gray(image));
+end
+
+image = image ./ max(image(:));
 
 % set parameters
 num_of_iterations = 10;

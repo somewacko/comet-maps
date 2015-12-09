@@ -7,7 +7,12 @@ function [ map ] = PentlandMap( image )
 % Output
 %   map    : The DEM from given image
 
-I = double(mat2gray(image));
+if size(image, 3) == 3
+    I = double(rgb2gray(image));
+else
+    I = double(mat2gray(image));
+end
+
 I = I ./ max(I(:));
 
 [num_rows,num_cols] = size(I);
