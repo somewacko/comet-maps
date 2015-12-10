@@ -13,17 +13,22 @@ else
     image = double(mat2gray(image));
 end
 
-image = image ./ max(image(:));
-
 % set parameters
-num_of_iterations = 10;
+num_of_iterations = 500;
 p_q_delta = 0.0001;
 mu = 1;
-albedo = 0.05;
+albedo = 0.01;
+
+% normalize image
+image = image ./ max(image(:));
+image = image ./ albedo;
 
 % estimate light direction
 [slant, tilt] = SlantTiltEstimation(image);
-light_direction = [cos(tilt)*sin(slant) sin(tilt)*sin(slant) cos(slant)];
+light_direction = [cos(tilt)*sin(slant) sin(tilt)*sin(slant) -cos(slant)];
+
+norm_factor = sqrt(light_direction(1)^2 + light_direction(2)^2 + light_direction(3)^2);
+light_direction = [light_direction(1) / norm_factor light_direction(2) / norm_factor light_direction(3) / norm_factor];
 
 % determine number of hierarchies
 num_of_hierarchical_levels = 1;
@@ -31,7 +36,7 @@ num_of_hierarchical_levels = 1;
 min_dim = min(img_height, img_width);
 while min_dim > 64
     min_dim = min_dim / 2 + rem(min_dim, 2);
-    num_of_hierarchical_levels = num_of_hierarchical_levels + 1;
+    %num_of_hierarchical_levels = num_of_hierarchical_levels + 1;
 end
 
 % create hierarchies
@@ -51,30 +56,25 @@ for h=num_of_hierarchical_levels:-1:1
     [I_xx,~] = imgradientxy(I_x);
     [~,I_yy] = imgradientxy(I_y);
     
-    [p_x,p_y] = gradient(p{h});
-    [p_xx,~] = gradient(p_x);
-    [~,p_yy] = gradient(p_y);
+    [p_x,p_y] = imgradientxy(p{h});
+    [p_xx,~] = imgradientxy(p_x);
+    [~,p_yy] = imgradientxy(p_y);
     
-    [q_x,q_y] = gradient(q{h});
-    [q_xx,~] = gradient(q_x);
-    [~,q_yy] = gradient(q_y);
+    [q_x,q_y] = imgradientxy(q{h});
+    [q_xx,~] = imgradientxy(q_x);
+    [~,q_yy] = imgradientxy(q_y);
     
-    [Z_x,Z_y] = gradient(Z{h});
-    [Z_xx,~] = gradient(Z_x);
-    [~,Z_yy] = gradient(Z_y);
-    
-    [current_height, current_width] = size(images{h});
+    [Z_x,Z_y] = imgradientxy(Z{h});
+    [Z_xx,~] = imgradientxy(Z_x);
+    [~,Z_yy] = imgradientxy(Z_y);
     
     for t=1:num_of_iterations
-        R = albedo .* (-light_direction(1).* p{h} - light_direction(2).* q{h} + light_direction(3))./sqrt(1 + p{h}.^2 + q{h}.^2);
-        R = max(0,R);
+        R = (-light_direction(1).* p{h} - light_direction(2).* q{h} + light_direction(3))./ sqrt(1 + p{h}.^2 + q{h}.^2);
         
-        R_p = albedo .* (-light_direction(1).* (p{h} + p_q_delta) - light_direction(2).* q{h} + light_direction(3))./sqrt(1 + (p{h} + p_q_delta).^2 + q{h}.^2);
-        R_p = max(0,R_p);
+        R_p = (-light_direction(1).* (p{h} + p_q_delta) - light_direction(2).* q{h} + light_direction(3))./ sqrt(1 + (p{h} + p_q_delta).^2 + q{h}.^2);
         R_p = (R_p - R) ./ p_q_delta;
         
-        R_q = albedo .* (-light_direction(1).* p{h} - light_direction(2).* (q{h} + p_q_delta) + light_direction(3))./sqrt(1 + p{h}.^2 + (q{h} + p_q_delta).^2);
-        R_q = max(0,R_q);
+        R_q = (-light_direction(1).* p{h} - light_direction(2).* (q{h} + p_q_delta) + light_direction(3))./ sqrt(1 + p{h}.^2 + (q{h} + p_q_delta).^2);
         R_q  = (R_q - R) ./ p_q_delta;
         
         A_11 = 5 .* R_p.^2 + 1.25 .* mu;
@@ -94,89 +94,18 @@ for h=num_of_hierarchical_levels:-1:1
         d_q = (C_2 .* A_11 - C_1 .* A_12) ./ determinant;
         d_Z = (C_3 + d_p + d_q) ./ 4;
         
-        for i=1:current_height
-            for j=1:current_width
-                if isfinite(d_Z(i,j))
-                    p{h}(i,j) = p{h}(i,j) + d_p(i,j);
-                    q{h}(i,j) = q{h}(i,j) + d_q(i,j);
-                    Z{h}(i,j) = Z{h}(i,j) + d_Z(i,j);
-                end
-            end
-        end
+        p{h} = p{h} + d_p;
+        q{h} = q{h} + d_q;
+        Z{h} = Z{h} + d_Z;
     end
     
     if h == 1
         break
     end
     
-    [height, width] = size(images{h-1});
-    
-    for i=1:height
-        for j=1:width
-            i_half = round(i/2);
-            j_half = round(j/2);
-            
-            if rem(i,2) == 1 && rem(j,2) == 1
-                p{h-1}(i,j) = p{h}(i_half,j_half);
-                q{h-1}(i,j) = q{h}(i_half,j_half);
-                Z{h-1}(i,j) = Z{h}(i_half,j_half);
-                
-                if i_half <= current_height && j_half + 1 <= current_width
-                    p{h-1}(i,j) = p{h-1}(i,j) + p{h}(i_half,j_half + 1);
-                    q{h-1}(i,j) = q{h-1}(i,j) + q{h}(i_half,j_half + 1);
-                    Z{h-1}(i,j) = Z{h-1}(i,j) + Z{h}(i_half,j_half + 1);
-                end
-                if i_half + 1 <= current_height && j_half <= current_width
-                    p{h-1}(i,j) = p{h-1}(i,j) + p{h}(i_half + 1,j_half);
-                    q{h-1}(i,j) = q{h-1}(i,j) + q{h}(i_half + 1,j_half);
-                    Z{h-1}(i,j) = Z{h-1}(i,j) + Z{h}(i_half + 1,j_half);
-                end
-                if i_half + 1 <= current_height && j_half + 1 <= current_width
-                    p{h-1}(i,j) = p{h-1}(i,j) + p{h}(i_half + 1,j_half + 1);
-                    q{h-1}(i,j) = q{h-1}(i,j) + q{h}(i_half + 1,j_half + 1);
-                    Z{h-1}(i,j) = Z{h-1}(i,j) + Z{h}(i_half + 1,j_half + 1);
-                end
-                
-                p{h-1}(i,j) = p{h-1}(i,j) * 0.25;
-                q{h-1}(i,j) = q{h-1}(i,j) * 0.25;
-                Z{h-1}(i,j) = Z{h-1}(i,j) * 0.5;
-            else
-                if rem(j,2) == 1
-                    p{h-1}(i,j) = p{h}(i_half,j_half);
-                    q{h-1}(i,j) = q{h}(i_half,j_half);
-                    Z{h-1}(i,j) = Z{h}(i_half,j_half);
-                    
-                    if i_half <= current_height && j_half + 1 <= current_width
-                        p{h-1}(i,j) = p{h-1}(i,j) + p{h}(i_half,j_half + 1);
-                        q{h-1}(i,j) = q{h-1}(i,j) + q{h}(i_half,j_half + 1);
-                        Z{h-1}(i,j) = Z{h-1}(i,j) + Z{h}(i_half,j_half + 1);
-                    end
-                    
-                    p{h-1}(i,j) = p{h-1}(i,j) * 0.5;
-                    q{h-1}(i,j) = q{h-1}(i,j) * 0.5;
-                else
-                    if rem(i,2) == 1
-                        p{h-1}(i,j) = p{h}(i_half,j_half);
-                        q{h-1}(i,j) = q{h}(i_half,j_half);
-                        Z{h-1}(i,j) = Z{h}(i_half,j_half);
-                        
-                        if i_half + 1 <= current_height && j_half <= current_width
-                            p{h-1}(i,j) = p{h-1}(i,j) + p{h}(i_half + 1,j_half);
-                            q{h-1}(i,j) = q{h-1}(i,j) + q{h}(i_half + 1,j_half);
-                            Z{h-1}(i,j) = Z{h-1}(i,j) + Z{h}(i_half + 1,j_half);
-                        end
-                        
-                        p{h-1}(i,j) = p{h-1}(i,j) * 0.5;
-                        q{h-1}(i,j) = q{h-1}(i,j) * 0.5;
-                    else
-                        p{h-1}(i,j) = p{h}(i_half,j_half);
-                        q{h-1}(i,j) = q{h}(i_half,j_half);
-                        Z{h-1}(i,j) = Z{h}(i_half,j_half) * 2;
-                    end
-                end
-            end
-        end
-    end
+    p{h-1} = imresize(p{h}, size(p{h-1}));
+    q{h-1} = imresize(q{h}, size(q{h-1}));
+    Z{h-1} = imresize(Z{h}, size(Z{h-1}));
 end
 
 map = Z{1};
