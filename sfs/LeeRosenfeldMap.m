@@ -56,3 +56,5 @@ maxZ = max(Z(:));
 minZ = min(Z(:));
 
 map = (Z - minZ) .* 10 ./ (maxZ-minZ);
+
+map = medfilt2(abs(map),[21 21]);

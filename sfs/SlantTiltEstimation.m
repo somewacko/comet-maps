@@ -1,19 +1,16 @@
 function [slant,tilt] = SlantTiltEstimation(img)
+% Uses slant and tilt estimation from Zheng and Chellappa's paper
 
-% Compute gradient
-[Ex,Ey] = gradient(img);
+[I_x,I_y] = gradient(img);
 
-% normalize the gradients to be unit vectors
-Exy = sqrt(Ex.^2 + Ey.^2);
-Ex = Ex ./ (Exy + eps);
-Ey = Ey ./ (Exy + eps);
-
-% computing the average of the normalized gradients
-avgEx = mean(Ex(:));
-avgEy = mean(Ey(:));
+I_xy = sqrt(I_x.^2 + I_y.^2);
+I_x = I_x ./ (I_xy + eps);
+I_y = I_y ./ (I_xy + eps);
+I_x = mean(I_x(:));
+I_y = mean(I_y(:));
 
 % estimate tilt
-tilt = atan(avgEy/avgEx);
+tilt = atan(I_y/I_x);
 if tilt < 0
     tilt = tilt + pi;
 end

@@ -108,5 +108,5 @@ for h=num_of_hierarchical_levels:-1:1
     Z{h-1} = imresize(Z{h}, size(Z{h-1}));
 end
 
-map = Z{1};
+map = medfilt2(abs(Z{1}),[21 21]);
 

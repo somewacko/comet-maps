@@ -6,19 +6,21 @@
 clc; clf;
 
 % Read comet image
-image = imread('20150427100331-a25c4b91-xl.png');
+image = imread('mozart.png');
 
 % Create depth map from SFS algorithm
-map = ZhengChellappaMap(image);
+depth_map = TsaiShahMap(image);
 
-% Performing smoothing of recovered surface
-depth_map = medfilt2(abs(map),[21 21]);
+max_z = max(max(depth_map)) * 1.5;
+min_z = min(min(depth_map));
 
 % Draw 3D surface
-h = surfl(depth_map);
+h = surfl(depth_map); % use 'mesh' function (instead of 'surfl') for comet images 
+zlim([min_z max_z]);
 set(h,'ydata',flipud(get(h,'ydata')));
 set(h,'xdata',flipud(get(h,'xdata')));
 shading interp;
 colormap gray(256);
-lighting phong;
+%lighting phong;
+view([-40 75]); % [0 83] for comet images
 
