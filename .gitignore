@@ -1,5 +1,6 @@
 # Ignore directories with data
 data/*
+output/*
 
 # OSX
 .DS_Store
